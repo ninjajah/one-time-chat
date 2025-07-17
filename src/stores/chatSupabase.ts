@@ -338,7 +338,7 @@ export const useChatSupabaseStore = defineStore('chatSupabase', () => {
       if (!sessionData) return false
 
       const session = JSON.parse(sessionData)
-      
+
       // Проверяем, что чат еще активен
       if (!(await chatExists(session.chatId))) {
         sessionStorage.removeItem('chat_session')

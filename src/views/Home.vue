@@ -12,7 +12,7 @@
       </div>
 
       <div class="space-y-4">
-        <button 
+        <button
           @click="createNewChat"
           :disabled="isCreating"
           class="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
@@ -24,12 +24,12 @@
         <div v-if="chatLink" class="glass rounded-lg p-4 animate-slide-up">
           <p class="text-sm text-gray-300 mb-2">Ссылка на чат:</p>
           <div class="flex items-center space-x-2">
-            <input 
-              :value="chatLink" 
-              readonly 
+            <input
+              :value="chatLink"
+              readonly
               class="input-field flex-1 text-sm"
             >
-            <button 
+            <button
               @click="copyLink"
               class="btn-secondary px-3 py-2"
               :class="{ 'bg-green-500/20 border-green-400/30': copied }"
@@ -64,9 +64,9 @@ const copied = ref(false)
 
 async function createNewChat() {
   isCreating.value = true
-  
+
   try {
-    const chatId = chatStore.createChat()
+    const chatId = await chatStore.createChat()
     if (chatId) {
       chatLink.value = chatStore.getChatUrl(chatId)
     }
