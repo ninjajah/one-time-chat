@@ -30,9 +30,17 @@
               class="input-field flex-1 text-sm"
             >
             <button
+              @click="goToChat"
+              class="btn-primary px-3 py-2"
+              title="Перейти в чат"
+            >
+              <span>→</span>
+            </button>
+            <button
               @click="copyLink"
               class="btn-secondary px-3 py-2"
               :class="{ 'bg-green-500/20 border-green-400/30': copied }"
+              title="Копировать ссылку"
             >
               <span v-if="copied">✓</span>
               <span v-else>📋</span>
@@ -55,23 +63,33 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useChatSupabaseStore } from '../stores/chatSupabase'
 
+const router = useRouter()
 const chatStore = useChatSupabaseStore()
 const isCreating = ref(false)
 const chatLink = ref('')
+const chatId = ref('')
 const copied = ref(false)
 
 async function createNewChat() {
   isCreating.value = true
 
   try {
-    const chatId = await chatStore.createChat()
-    if (chatId) {
-      chatLink.value = chatStore.getChatUrl(chatId)
+    const newChatId = await chatStore.createChat()
+    if (newChatId) {
+      chatId.value = newChatId
+      chatLink.value = chatStore.getChatUrl(newChatId)
     }
   } finally {
     isCreating.value = false
+  }
+}
+
+function goToChat() {
+  if (chatId.value) {
+    router.push(`/chat/${chatId.value}`)
   }
 }
 
