@@ -13,7 +13,22 @@
         <p class="text-gray-300">Введите ваше имя для входа</p>
       </div>
 
-      <div v-if="!chatExists" class="text-center">
+      <!-- Состояние загрузки -->
+      <div v-if="isLoading" class="text-center">
+        <div class="text-gray-300 mb-4">
+          <div class="w-12 h-12 mx-auto mb-4 animate-spin">
+            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+          </div>
+          <p class="text-lg font-semibold">Проверяем чат...</p>
+          <p class="text-sm text-gray-400">Пожалуйста, подождите</p>
+        </div>
+      </div>
+
+      <!-- Чат не найден -->
+      <div v-else-if="!chatExists" class="text-center">
         <div class="text-red-400 mb-4">
           <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -27,6 +42,7 @@
         </router-link>
       </div>
 
+      <!-- Форма входа -->
       <form v-else @submit.prevent="joinChat" class="space-y-6">
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">
@@ -97,12 +113,14 @@ const error = ref('')
 
 const chatExists = ref(false)
 const participantCount = ref(0)
+const isLoading = ref(true)
 
 onMounted(async () => {
   // Проверяем существование чата
   chatExists.value = await chatStore.chatExists(props.id)
   
   if (!chatExists.value) {
+    isLoading.value = false
     return
   }
   
@@ -114,6 +132,8 @@ onMounted(async () => {
     router.push(`/room/${props.id}`)
     return
   }
+  
+  isLoading.value = false
 })
 
 async function joinChat() {
@@ -126,7 +146,7 @@ async function joinChat() {
     // Имитируем задержку подключения
     await new Promise(resolve => setTimeout(resolve, 800))
 
-    const success = chatStore.joinChat(props.id, userName.value.trim())
+    const success = await chatStore.joinChat(props.id, userName.value.trim())
 
     if (success) {
       await router.push(`/room/${props.id}`)

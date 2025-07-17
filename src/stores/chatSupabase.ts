@@ -202,8 +202,20 @@ export const useChatSupabaseStore = defineStore('chatSupabase', () => {
   async function sendMessage(content: string) {
     if (!currentUser.value || !currentChatId.value || !content.trim()) return
 
+    // Создаем временное сообщение для оптимистичного обновления
+    const tempMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      type: 'user',
+      content: content.trim(),
+      author: currentUser.value.name,
+      timestamp: new Date()
+    }
+    
+    // Добавляем сообщение локально сразу
+    currentMessages.value.push(tempMessage)
+    
     try {
-      await supabase
+      const { data, error } = await supabase
         .from('chat_messages')
         .insert({
           chat_id: currentChatId.value,
@@ -211,8 +223,31 @@ export const useChatSupabaseStore = defineStore('chatSupabase', () => {
           message_type: 'user',
           content: content.trim()
         })
+        .select()
+        
+      if (error) throw error
+      
+      // Обновляем локальное сообщение с данными сервера
+      if (data && data.length > 0) {
+        const serverMessage = data[0]
+        const messageIndex = currentMessages.value.findIndex(m => m.id === tempMessage.id)
+        if (messageIndex !== -1) {
+          currentMessages.value[messageIndex] = {
+            id: serverMessage.id,
+            type: serverMessage.message_type as 'user' | 'system',
+            content: serverMessage.content,
+            author: currentUser.value.name,
+            timestamp: new Date(serverMessage.created_at)
+          }
+        }
+      }
     } catch (error) {
       console.error('Ошибка отправки сообщения:', error)
+      // Удаляем сообщение из локального состояния в случае ошибки
+      const messageIndex = currentMessages.value.findIndex(m => m.id === tempMessage.id)
+      if (messageIndex !== -1) {
+        currentMessages.value.splice(messageIndex, 1)
+      }
     }
   }
 
@@ -307,6 +342,7 @@ export const useChatSupabaseStore = defineStore('chatSupabase', () => {
 
   // Загрузка сообщений
   async function loadMessages(chatId: string) {
+    console.log('📥 Загружаем сообщения для чата:', chatId)
     try {
       const { data, error } = await supabase
         .from('chat_messages')
@@ -319,13 +355,39 @@ export const useChatSupabaseStore = defineStore('chatSupabase', () => {
 
       if (error) throw error
 
-      currentMessages.value = data.map(m => ({
+      console.log('📥 Получено сообщений:', data.length)
+      console.log('📥 Данные сообщений:', data)
+      
+      const mappedMessages = data.map(m => ({
         id: m.id,
         type: m.message_type as 'user' | 'system',
         content: m.content,
         author: m.chat_participants?.user_name,
         timestamp: new Date(m.created_at)
       }))
+      
+      console.log('📥 Обработанные сообщения:', mappedMessages)
+      
+      // Проверяем, если это обновление от real-time подписки
+      // Добавляем только новые сообщения, которых еще нет в currentMessages
+      if (currentMessages.value.length > 0) {
+        const existingIds = new Set(currentMessages.value.map(m => m.id))
+        const newMessages = mappedMessages.filter(m => !existingIds.has(m.id))
+        
+        if (newMessages.length > 0) {
+          console.log('📥 Добавляем новые сообщения:', newMessages)
+          currentMessages.value.push(...newMessages)
+          // Сортируем по времени
+          currentMessages.value.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+        } else {
+          console.log('📥 Новых сообщений нет, пропускаем обновление')
+        }
+      } else {
+        // Если сообщений еще нет, загружаем все
+        currentMessages.value = mappedMessages
+      }
+      
+      console.log('📥 currentMessages обновлено:', currentMessages.value.length)
     } catch (error) {
       console.error('Ошибка загрузки сообщений:', error)
     }
