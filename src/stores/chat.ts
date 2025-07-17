@@ -1,11 +1,11 @@
 import {defineStore} from 'pinia'
 import {ref, computed} from 'vue'
 
-// Ключ для localStorage
+// Ключи для sessionStorage
 const STORAGE_KEY = 'one-time-chats'
 const USER_SESSION_KEY = 'current-user-session'
 
-// Функции для работы с localStorage
+// Функции для работы с sessionStorage
 function saveChatsToStorage(chats: Map<string, ChatRoom>) {
     try {
         const chatsArray = Array.from(chats.entries()).map(([id, chat]) => [id, {
@@ -20,15 +20,15 @@ function saveChatsToStorage(chats: Map<string, ChatRoom>) {
                 timestamp: message.timestamp.toISOString()
             }))
         }])
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(chatsArray))
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(chatsArray))
     } catch (error) {
-        console.warn('Не удалось сохранить чаты в localStorage:', error)
+        console.warn('Не удалось сохранить чаты в sessionStorage:', error)
     }
 }
 
 function loadChatsFromStorage(): Map<string, ChatRoom> {
     try {
-        const stored = localStorage.getItem(STORAGE_KEY)
+        const stored = sessionStorage.getItem(STORAGE_KEY)
         if (!stored) return new Map()
         
         const chatsArray = JSON.parse(stored)
@@ -51,7 +51,7 @@ function loadChatsFromStorage(): Map<string, ChatRoom> {
         
         return chats
     } catch (error) {
-        console.warn('Не удалось загрузить чаты из localStorage:', error)
+        console.warn('Не удалось загрузить чаты из sessionStorage:', error)
         return new Map()
     }
 }
@@ -67,7 +67,7 @@ function saveUserSession(user: User, chatId: string) {
             chatId,
             timestamp: new Date().toISOString()
         }
-        localStorage.setItem(USER_SESSION_KEY, JSON.stringify(session))
+        sessionStorage.setItem(USER_SESSION_KEY, JSON.stringify(session))
     } catch (error) {
         console.warn('Не удалось сохранить сессию пользователя:', error)
     }
@@ -75,7 +75,7 @@ function saveUserSession(user: User, chatId: string) {
 
 function loadUserSession(): { user: User; chatId: string } | null {
     try {
-        const stored = localStorage.getItem(USER_SESSION_KEY)
+        const stored = sessionStorage.getItem(USER_SESSION_KEY)
         if (!stored) return null
         
         const session = JSON.parse(stored)
@@ -86,7 +86,7 @@ function loadUserSession(): { user: User; chatId: string } | null {
         const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
         
         if (sessionTime < oneDayAgo) {
-            localStorage.removeItem(USER_SESSION_KEY)
+            sessionStorage.removeItem(USER_SESSION_KEY)
             return null
         }
         
@@ -99,13 +99,13 @@ function loadUserSession(): { user: User; chatId: string } | null {
         }
     } catch (error) {
         console.warn('Не удалось загрузить сессию пользователя:', error)
-        localStorage.removeItem(USER_SESSION_KEY)
+        sessionStorage.removeItem(USER_SESSION_KEY)
         return null
     }
 }
 
 function clearUserSession() {
-    localStorage.removeItem(USER_SESSION_KEY)
+    sessionStorage.removeItem(USER_SESSION_KEY)
 }
 
 // Функция для очистки старых чатов (старше 24 часов)
@@ -300,7 +300,7 @@ export const useChatStore = defineStore('chat', () => {
     }
     function clearAllChats() {
         chatRooms.value.clear()
-        localStorage.removeItem(STORAGE_KEY)
+        sessionStorage.removeItem(STORAGE_KEY)
         clearUserSession()
         currentUser.value = null
         currentChatId.value = null
