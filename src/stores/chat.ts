@@ -221,6 +221,10 @@ export const useChatStore = defineStore('chat', () => {
         return `${window.location.origin}/chat/${chatId}`
     }
 
+    function getChatParticipantCount(chatId: string): number {
+        const chat = chatRooms.value.get(chatId)
+        return chat ? chat.users.length : 0
+    }
     function clearAllChats() {
         chatRooms.value.clear()
         localStorage.removeItem(STORAGE_KEY)
@@ -239,6 +243,7 @@ export const useChatStore = defineStore('chat', () => {
         sendMessage,
         chatExists,
         getChatUrl,
+        getChatParticipantCount,
         clearAllChats
     }
 })
