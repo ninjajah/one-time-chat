@@ -1,6 +1,72 @@
 import {defineStore} from 'pinia'
 import {ref, computed} from 'vue'
 
+// Ключ для localStorage
+const STORAGE_KEY = 'one-time-chats'
+
+// Функции для работы с localStorage
+function saveChatsToStorage(chats: Map<string, ChatRoom>) {
+    try {
+        const chatsArray = Array.from(chats.entries()).map(([id, chat]) => [id, {
+            ...chat,
+            createdAt: chat.createdAt.toISOString(),
+            users: chat.users.map(user => ({
+                ...user,
+                joinedAt: user.joinedAt.toISOString()
+            })),
+            messages: chat.messages.map(message => ({
+                ...message,
+                timestamp: message.timestamp.toISOString()
+            }))
+        }])
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(chatsArray))
+    } catch (error) {
+        console.warn('Не удалось сохранить чаты в localStorage:', error)
+    }
+}
+
+function loadChatsFromStorage(): Map<string, ChatRoom> {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY)
+        if (!stored) return new Map()
+        
+        const chatsArray = JSON.parse(stored)
+        const chats = new Map<string, ChatRoom>()
+        
+        chatsArray.forEach(([id, chat]: [string, any]) => {
+            chats.set(id, {
+                ...chat,
+                createdAt: new Date(chat.createdAt),
+                users: chat.users.map((user: any) => ({
+                    ...user,
+                    joinedAt: new Date(user.joinedAt)
+                })),
+                messages: chat.messages.map((message: any) => ({
+                    ...message,
+                    timestamp: new Date(message.timestamp)
+                }))
+            })
+        })
+        
+        return chats
+    } catch (error) {
+        console.warn('Не удалось загрузить чаты из localStorage:', error)
+        return new Map()
+    }
+}
+
+// Функция для очистки старых чатов (старше 24 часов)
+function cleanupOldChats(chats: Map<string, ChatRoom>) {
+    const now = new Date()
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+    
+    for (const [id, chat] of chats.entries()) {
+        if (chat.createdAt < oneDayAgo) {
+            chats.delete(id)
+        }
+    }
+}
+
 export interface Message {
     id: string
     type: 'user' | 'system'
@@ -23,9 +89,14 @@ export interface ChatRoom {
 }
 
 export const useChatStore = defineStore('chat', () => {
-    const chatRooms = ref<Map<string, ChatRoom>>(new Map())
+    // Загружаем чаты из localStorage при инициализации
+    const chatRooms = ref<Map<string, ChatRoom>>(loadChatsFromStorage())
     const currentUser = ref<User | null>(null)
     const currentChatId = ref<string | null>(null)
+    
+    // Очищаем старые чаты при загрузке
+    cleanupOldChats(chatRooms.value)
+    saveChatsToStorage(chatRooms.value)
 
     const currentChat = computed(() => {
         if (!currentChatId.value) return null
@@ -49,6 +120,7 @@ export const useChatStore = defineStore('chat', () => {
             createdAt: new Date()
         }
         chatRooms.value.set(chatId, newChat)
+        saveChatsToStorage(chatRooms.value)
         return chatId
     }
 
@@ -74,6 +146,7 @@ export const useChatStore = defineStore('chat', () => {
 
         // Добавляем системное сообщение о входе
         addSystemMessage(`${userName} присоединился к чату`)
+        saveChatsToStorage(chatRooms.value)
 
         return true
     }
@@ -93,7 +166,13 @@ export const useChatStore = defineStore('chat', () => {
         // Если чат пустой, удаляем его
         if (chat.users.length === 0) {
             chatRooms.value.delete(currentChatId.value)
+        } else {
+            // Сохраняем изменения если чат не удален
+            saveChatsToStorage(chatRooms.value)
         }
+        
+        // Сохраняем изменения в любом случае
+        saveChatsToStorage(chatRooms.value)
 
         currentUser.value = null
         currentChatId.value = null
@@ -114,6 +193,7 @@ export const useChatStore = defineStore('chat', () => {
         }
 
         chat.messages.push(message)
+        saveChatsToStorage(chatRooms.value)
     }
 
     function addSystemMessage(content: string) {
@@ -130,6 +210,7 @@ export const useChatStore = defineStore('chat', () => {
         }
 
         chat.messages.push(message)
+        saveChatsToStorage(chatRooms.value)
     }
 
     function chatExists(chatId: string): boolean {
@@ -138,6 +219,13 @@ export const useChatStore = defineStore('chat', () => {
 
     function getChatUrl(chatId: string): string {
         return `${window.location.origin}/chat/${chatId}`
+    }
+
+    function clearAllChats() {
+        chatRooms.value.clear()
+        localStorage.removeItem(STORAGE_KEY)
+        currentUser.value = null
+        currentChatId.value = null
     }
 
     return {
@@ -150,6 +238,7 @@ export const useChatStore = defineStore('chat', () => {
         leaveChat,
         sendMessage,
         chatExists,
-        getChatUrl
+        getChatUrl,
+        clearAllChats
     }
 })

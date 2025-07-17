@@ -47,7 +47,16 @@
       <div class="mt-8 text-xs text-gray-400 space-y-1">
         <p>• Максимум 10 участников</p>
         <p>• Чат удаляется когда все покидают его</p>
-        <p>• Сообщения не сохраняются</p>
+        <p>• Чаты автоматически удаляются через 24 часа</p>
+      </div>
+      
+      <div class="mt-4">
+        <button 
+          @click="clearAllChats"
+          class="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+        >
+          Очистить все чаты
+        </button>
       </div>
     </div>
   </div>
@@ -61,6 +70,13 @@ const chatStore = useChatStore()
 const isCreating = ref(false)
 const chatLink = ref('')
 const copied = ref(false)
+
+function clearAllChats() {
+  if (confirm('Вы уверены, что хотите очистить все чаты?')) {
+    chatStore.clearAllChats()
+    chatLink.value = ''
+  }
+}
 
 async function createNewChat() {
   isCreating.value = true

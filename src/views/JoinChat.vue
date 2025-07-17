@@ -97,7 +97,11 @@ const error = ref('')
 
 const chatExists = computed(() => chatStore.chatExists(props.id))
 const participantCount = computed(() => {
-  const chat = chatStore.currentChat
+  if (!chatExists.value) return 0
+  
+  // Получаем чат напрямую из store для подсчета участников
+  const chats = (chatStore as any).chatRooms
+  const chat = chats.get(props.id)
   return chat ? chat.users.length : 0
 })
 
