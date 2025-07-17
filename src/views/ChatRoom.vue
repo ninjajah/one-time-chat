@@ -16,12 +16,23 @@
             <p class="text-sm text-gray-300">{{ currentUsers.length }} участников</p>
           </div>
         </div>
-        <button
-            @click="leaveChat"
-            class="btn-secondary text-sm"
-        >
-          Покинуть чат
-        </button>
+        <div class="flex items-center space-x-2">
+          <button
+              @click="copyLink"
+              class="btn-secondary px-3 py-2 text-sm"
+              :class="{ 'bg-green-500/20 border-green-400/30': copied }"
+              title="Копировать ссылку на чат"
+          >
+            <span v-if="copied">✓</span>
+            <span v-else>🔗</span>
+          </button>
+          <button
+              @click="leaveChat"
+              class="btn-secondary text-sm"
+          >
+            Покинуть чат
+          </button>
+        </div>
       </div>
     </header>
 
@@ -108,7 +119,7 @@
             Участники ({{ currentUsers.length }}/10)
           </h2>
         </div>
-        
+
         <div class="flex-1 overflow-y-auto px-4 pb-4">
           <div class="space-y-2">
             <div
@@ -164,6 +175,7 @@ const chatStore = useChatSupabaseStore()
 const newMessage = ref('')
 const isSending = ref(false)
 const messagesContainer = ref<HTMLElement>()
+const copied = ref(false)
 
 const currentUser = computed(() => chatStore.currentUser)
 const currentUsers = computed(() => chatStore.currentUsers)
@@ -228,6 +240,19 @@ async function sendMessage() {
 function leaveChat() {
   chatStore.leaveChat()
   router.push('/')
+}
+
+async function copyLink() {
+  try {
+    const chatUrl = chatStore.getChatUrl(props.id)
+    await navigator.clipboard.writeText(chatUrl)
+    copied.value = true
+    setTimeout(() => {
+      copied.value = false
+    }, 2000)
+  } catch (err) {
+    console.error('Не удалось скопировать ссылку:', err)
+  }
 }
 
 function formatTime(date: Date): string {
