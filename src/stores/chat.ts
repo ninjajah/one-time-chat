@@ -3,6 +3,7 @@ import {ref, computed} from 'vue'
 
 // Ключ для localStorage
 const STORAGE_KEY = 'one-time-chats'
+const USER_SESSION_KEY = 'current-user-session'
 
 // Функции для работы с localStorage
 function saveChatsToStorage(chats: Map<string, ChatRoom>) {
@@ -55,6 +56,58 @@ function loadChatsFromStorage(): Map<string, ChatRoom> {
     }
 }
 
+// Функции для работы с сессией пользователя
+function saveUserSession(user: User, chatId: string) {
+    try {
+        const session = {
+            user: {
+                ...user,
+                joinedAt: user.joinedAt.toISOString()
+            },
+            chatId,
+            timestamp: new Date().toISOString()
+        }
+        localStorage.setItem(USER_SESSION_KEY, JSON.stringify(session))
+    } catch (error) {
+        console.warn('Не удалось сохранить сессию пользователя:', error)
+    }
+}
+
+function loadUserSession(): { user: User; chatId: string } | null {
+    try {
+        const stored = localStorage.getItem(USER_SESSION_KEY)
+        if (!stored) return null
+        
+        const session = JSON.parse(stored)
+        
+        // Проверяем, не истекла ли сессия (24 часа)
+        const sessionTime = new Date(session.timestamp)
+        const now = new Date()
+        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+        
+        if (sessionTime < oneDayAgo) {
+            localStorage.removeItem(USER_SESSION_KEY)
+            return null
+        }
+        
+        return {
+            user: {
+                ...session.user,
+                joinedAt: new Date(session.user.joinedAt)
+            },
+            chatId: session.chatId
+        }
+    } catch (error) {
+        console.warn('Не удалось загрузить сессию пользователя:', error)
+        localStorage.removeItem(USER_SESSION_KEY)
+        return null
+    }
+}
+
+function clearUserSession() {
+    localStorage.removeItem(USER_SESSION_KEY)
+}
+
 // Функция для очистки старых чатов (старше 24 часов)
 function cleanupOldChats(chats: Map<string, ChatRoom>) {
     const now = new Date()
@@ -97,6 +150,20 @@ export const useChatStore = defineStore('chat', () => {
     // Очищаем старые чаты при загрузке
     cleanupOldChats(chatRooms.value)
     saveChatsToStorage(chatRooms.value)
+    
+    // Восстанавливаем сессию пользователя если она есть
+    const userSession = loadUserSession()
+    if (userSession) {
+        const chat = chatRooms.value.get(userSession.chatId)
+        // Проверяем, что чат существует и пользователь в нём есть
+        if (chat && chat.users.some(u => u.id === userSession.user.id)) {
+            currentUser.value = userSession.user
+            currentChatId.value = userSession.chatId
+        } else {
+            // Если чат не найден или пользователя в нём нет, очищаем сессию
+            clearUserSession()
+        }
+    }
 
     const currentChat = computed(() => {
         if (!currentChatId.value) return null
@@ -143,6 +210,9 @@ export const useChatStore = defineStore('chat', () => {
         chat.users.push(user)
         currentUser.value = user
         currentChatId.value = chatId
+        
+        // Сохраняем сессию пользователя
+        saveUserSession(user, chatId)
 
         // Добавляем системное сообщение о входе
         addSystemMessage(`${userName} присоединился к чату`)
@@ -173,6 +243,9 @@ export const useChatStore = defineStore('chat', () => {
         
         // Сохраняем изменения в любом случае
         saveChatsToStorage(chatRooms.value)
+        
+        // Очищаем сессию пользователя
+        clearUserSession()
 
         currentUser.value = null
         currentChatId.value = null
@@ -228,8 +301,15 @@ export const useChatStore = defineStore('chat', () => {
     function clearAllChats() {
         chatRooms.value.clear()
         localStorage.removeItem(STORAGE_KEY)
+        clearUserSession()
         currentUser.value = null
         currentChatId.value = null
+    }
+    
+    function isUserInChat(chatId: string): boolean {
+        if (!currentUser.value) return false
+        const chat = chatRooms.value.get(chatId)
+        return chat ? chat.users.some(u => u.id === currentUser.value!.id) : false
     }
 
     return {
@@ -244,6 +324,7 @@ export const useChatStore = defineStore('chat', () => {
         chatExists,
         getChatUrl,
         getChatParticipantCount,
-        clearAllChats
+        clearAllChats,
+        isUserInChat
     }
 })

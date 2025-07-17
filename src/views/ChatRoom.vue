@@ -162,8 +162,14 @@ const currentUsers = computed(() => chatStore.currentUsers)
 const currentMessages = computed(() => chatStore.currentMessages)
 
 onMounted(() => {
+  // Проверяем, существует ли чат
+  if (!chatStore.chatExists(props.id)) {
+    router.push(`/chat/${props.id}`)
+    return
+  }
+  
   // Проверяем, авторизован ли пользователь в этом чате
-  if (!currentUser.value || !chatStore.chatExists(props.id)) {
+  if (!currentUser.value || !chatStore.isUserInChat(props.id)) {
     router.push(`/chat/${props.id}`)
     return
   }
