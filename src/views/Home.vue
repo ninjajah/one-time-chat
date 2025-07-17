@@ -46,17 +46,8 @@
 
       <div class="mt-8 text-xs text-gray-400 space-y-1">
         <p>• Максимум 10 участников</p>
-        <p>• Чат удаляется при закрытии браузера</p>
+        <p>• Чат автоматически удаляется через 24 часа</p>
         <p>• Чат удаляется когда все покидают его</p>
-      </div>
-      
-      <div class="mt-4">
-        <button 
-          @click="clearAllChats"
-          class="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-        >
-          Очистить все чаты
-        </button>
       </div>
     </div>
   </div>
@@ -64,29 +55,21 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useChatStore } from '../stores/chat'
+import { useChatSupabaseStore } from '../stores/chatSupabase'
 
-const chatStore = useChatStore()
+const chatStore = useChatSupabaseStore()
 const isCreating = ref(false)
 const chatLink = ref('')
 const copied = ref(false)
-
-function clearAllChats() {
-  if (confirm('Вы уверены, что хотите очистить все чаты?')) {
-    chatStore.clearAllChats()
-    chatLink.value = ''
-  }
-}
 
 async function createNewChat() {
   isCreating.value = true
   
   try {
-    // Имитируем небольшую задержку для UX
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
     const chatId = chatStore.createChat()
-    chatLink.value = chatStore.getChatUrl(chatId)
+    if (chatId) {
+      chatLink.value = chatStore.getChatUrl(chatId)
+    }
   } finally {
     isCreating.value = false
   }

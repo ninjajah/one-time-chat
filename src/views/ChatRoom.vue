@@ -143,7 +143,7 @@
 <script setup lang="ts">
 import {ref, computed, nextTick, watch, onMounted, onBeforeUnmount} from 'vue'
 import {useRouter} from 'vue-router'
-import {useChatStore} from '../stores/chat'
+import {useChatSupabaseStore} from '../stores/chatSupabase'
 
 interface Props {
   id: string
@@ -151,7 +151,7 @@ interface Props {
 
 const props = defineProps<Props>()
 const router = useRouter()
-const chatStore = useChatStore()
+const chatStore = useChatSupabaseStore()
 
 const newMessage = ref('')
 const isSending = ref(false)
@@ -161,15 +161,18 @@ const currentUser = computed(() => chatStore.currentUser)
 const currentUsers = computed(() => chatStore.currentUsers)
 const currentMessages = computed(() => chatStore.currentMessages)
 
-onMounted(() => {
+onMounted(async () => {
   // Проверяем, существует ли чат
-  if (!chatStore.chatExists(props.id)) {
+  if (!(await chatStore.chatExists(props.id))) {
     router.push(`/chat/${props.id}`)
     return
   }
   
+  // Пытаемся восстановить сессию
+  const sessionRestored = await chatStore.restoreSession()
+  
   // Проверяем, авторизован ли пользователь в этом чате
-  if (!currentUser.value || !chatStore.isUserInChat(props.id)) {
+  if (!sessionRestored && (!currentUser.value || !chatStore.isUserInChat(props.id))) {
     router.push(`/chat/${props.id}`)
     return
   }
@@ -180,7 +183,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   // Покидаем чат при закрытии страницы
   if (currentUser.value) {
-    chatStore.leaveChat()
+    // Не вызываем leaveChat при закрытии страницы, 
+    // так как пользователь может просто обновить страницу
   }
 })
 
@@ -206,7 +210,7 @@ async function sendMessage() {
     // Имитируем небольшую задержку отправки
     await new Promise(resolve => setTimeout(resolve, 100))
 
-    chatStore.sendMessage(newMessage.value)
+    await chatStore.sendMessage(newMessage.value)
     newMessage.value = ''
   } finally {
     isSending.value = false

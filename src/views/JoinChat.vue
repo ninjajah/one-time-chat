@@ -81,7 +81,7 @@
 <script setup lang="ts">
 import {ref, computed, onMounted} from 'vue'
 import {useRouter} from 'vue-router'
-import {useChatStore} from '../stores/chat'
+import {useChatSupabaseStore} from '../stores/chatSupabase'
 
 interface Props {
   id: string
@@ -89,22 +89,25 @@ interface Props {
 
 const props = defineProps<Props>()
 const router = useRouter()
-const chatStore = useChatStore()
+const chatStore = useChatSupabaseStore()
 
 const userName = ref('')
 const isJoining = ref(false)
 const error = ref('')
 
-const chatExists = computed(() => chatStore.chatExists(props.id))
-const participantCount = computed(() => {
-  if (!chatExists.value) return 0
-  return chatStore.getChatParticipantCount(props.id)
-})
+const chatExists = ref(false)
+const participantCount = ref(0)
 
-onMounted(() => {
+onMounted(async () => {
+  // Проверяем существование чата
+  chatExists.value = await chatStore.chatExists(props.id)
+  
   if (!chatExists.value) {
     return
   }
+  
+  // Получаем количество участников
+  participantCount.value = await chatStore.getChatParticipantCount(props.id)
 
   // Если пользователь уже в этом чате, перенаправляем в комнату
   if (chatStore.isUserInChat(props.id)) {
@@ -128,7 +131,8 @@ async function joinChat() {
     if (success) {
       await router.push(`/room/${props.id}`)
     } else {
-      if (participantCount.value >= 10) {
+      const currentCount = await chatStore.getChatParticipantCount(props.id)
+      if (currentCount >= 10) {
         error.value = 'Чат переполнен (максимум 10 участников)'
       } else {
         error.value = 'Это имя уже занято'
