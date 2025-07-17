@@ -105,34 +105,10 @@ onMounted(() => {
   if (!chatExists.value) {
     return
   }
-  
+
   // Если пользователь уже в этом чате, перенаправляем в комнату
   if (chatStore.isUserInChat(props.id)) {
     router.push(`/room/${props.id}`)
-    return
-  }
-})
-
-interface Props {
-  id: string
-}
-
-const props = defineProps<Props>()
-const router = useRouter()
-const chatStore = useChatStore()
-
-const userName = ref('')
-const isJoining = ref(false)
-const error = ref('')
-
-const chatExists = computed(() => chatStore.chatExists(props.id))
-const participantCount = computed(() => {
-  if (!chatExists.value) return 0
-  return chatStore.getChatParticipantCount(props.id)
-})
-
-onMounted(() => {
-  if (!chatExists.value) {
     return
   }
 })
