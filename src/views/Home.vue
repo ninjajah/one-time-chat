@@ -13,6 +13,7 @@
 
       <div class="space-y-4">
         <button
+          v-if="!chatLink"
           @click="createNewChat"
           :disabled="isCreating"
           class="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
@@ -23,27 +24,31 @@
 
         <div v-if="chatLink" class="glass rounded-lg p-4 animate-slide-up">
           <p class="text-sm text-gray-300 mb-2">Ссылка на чат:</p>
-          <div class="flex items-center space-x-2">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <input
               :value="chatLink"
               readonly
-              class="input-field flex-1 text-sm"
+              class="input-field w-full sm:flex-1 text-sm"
             >
             <button
               @click="goToChat"
-              class="btn-primary px-3 py-2"
+              class="btn-primary w-full sm:w-auto px-3 py-2"
               title="Перейти в чат"
             >
-              <span>→</span>
+              <span class="sm:hidden">Перейти в чат ➡️</span>
+              <span class="hidden sm:inline">➡️</span>
             </button>
             <button
               @click="copyLink"
-              class="btn-secondary px-3 py-2"
+              class="btn-secondary w-full sm:w-auto px-3 py-2"
               :class="{ 'bg-green-500/20 border-green-400/30': copied }"
               title="Копировать ссылку"
             >
               <span v-if="copied">✓</span>
-              <span v-else>📋</span>
+              <span v-else>
+                <span class="sm:hidden">Копировать ссылку📋</span>
+                <span class="hidden sm:inline">📋</span>
+              </span>
             </button>
           </div>
           <p class="text-xs text-gray-400 mt-2">
