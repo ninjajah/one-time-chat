@@ -17,9 +17,10 @@
           </div>
         </div>
         <div class="flex items-center space-x-2">
+          <!-- Кнопки для десктопа -->
           <button
               @click="copyLink"
-              class="btn-secondary px-3 py-2 text-sm"
+              class="btn-secondary px-3 py-2 text-sm hidden sm:inline-flex"
               :class="{ 'bg-green-500/20 border-green-400/30': copied }"
               title="Копировать ссылку на чат"
           >
@@ -28,9 +29,15 @@
           </button>
           <button
               @click="leaveChat"
-              class="btn-secondary text-sm"
+              class="btn-secondary text-sm hidden sm:inline-flex"
           >
             Покинуть чат
+          </button>
+          <!-- Гамбургер для мобильных -->
+          <button @click="showMenu = true" class="sm:hidden btn-secondary px-3 py-2 text-xl flex items-center justify-center" title="Меню">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
           </button>
         </div>
       </div>
@@ -85,7 +92,7 @@
                   v-model="newMessage"
                   @keydown.enter.exact.prevent="sendMessage"
                   @keydown.enter.shift.exact="newMessage += '\n'"
-                  placeholder="Введите сообщение... (Enter - отправить, Shift+Enter - новая строка)"
+                  placeholder="Сообщение..."
                   class="input-field w-full resize-none"
                   rows="1"
                   maxlength="1000"
@@ -114,7 +121,7 @@
       </div>
 
       <!-- Боковая панель с участниками (фиксированная) -->
-      <aside class="w-80 glass border-l border-white/20 flex flex-col">
+      <aside class="w-80 glass border-l border-white/20 flex flex-col hidden sm:flex">
         <div class="p-4 flex-shrink-0">
           <h2 class="text-lg font-semibold text-white mb-4">
             Участники ({{ currentUsers.length }}/10)
@@ -158,6 +165,74 @@
       </aside>
     </div>
   </div>
+  <!-- Плавающее меню для мобильных -->
+  <div v-if="showMenu" class="fixed inset-0 z-50 flex">
+    <div class="fixed inset-0 bg-black bg-opacity-40" @click="showMenu = false"></div>
+    <div class="relative bg-white/90 dark:bg-gray-900 w-80 max-w-full h-full ml-auto flex flex-col shadow-2xl animate-slide-in-right">
+      <div class="flex items-center justify-between p-4 border-b border-white/20">
+        <span class="font-semibold text-lg text-gray-900 dark:text-white">Меню</span>
+        <button @click="showMenu = false" class="text-2xl text-gray-900 dark:text-white px-2 py-1">×</button>
+      </div>
+      <div class="p-4 flex flex-col space-y-3">
+        <button
+          @click="copyLink"
+          class="btn-secondary px-3 py-2 text-sm"
+          :class="{ 'bg-green-500/20 border-green-400/30': copied }"
+          title="Копировать ссылку на чат"
+        >
+          <span v-if="copied">✓</span>
+          <span v-else>🔗 Копировать ссылку</span>
+        </button>
+        <button
+          @click="leaveChat"
+          class="btn-secondary text-sm"
+        >
+          Покинуть чат
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        <!-- Вставляем aside-контент -->
+        <div class="p-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Участники ({{ currentUsers.length }}/10)
+          </h2>
+        </div>
+        <div class="flex-1 overflow-y-auto px-4 pb-4">
+          <div class="space-y-2">
+            <div
+                v-for="user in currentUsers"
+                :key="user.id"
+                class="flex items-center space-x-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+            >
+              <div
+                  class="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                <span class="text-white text-sm font-semibold">
+                  {{ user.name.charAt(0).toUpperCase() }}
+                </span>
+              </div>
+              <div class="flex-1">
+                <p class="text-white font-medium">{{ user.name }}</p>
+                <p class="text-xs text-gray-400">
+                  {{ user.id === currentUser?.id ? 'Вы' : `В сети с ${formatTime(user.joinedAt)}` }}
+                </p>
+              </div>
+              <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+            </div>
+          </div>
+        </div>
+        <div class="p-4 flex-shrink-0">
+          <div class="p-3 rounded-lg bg-white/5">
+            <h3 class="text-sm font-semibold text-white mb-2">Информация о чате</h3>
+            <div class="space-y-1 text-xs text-gray-400">
+              <p>• Максимум 10 участников</p>
+              <p>• Максимум 1000 символов в сообщении</p>
+              <p>• Чат удаляется когда все покидают его</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -178,6 +253,7 @@ const isSending = ref(false)
 const messagesContainer = ref<HTMLElement>()
 const textareaRef = ref<HTMLTextAreaElement>() // добавляем ref для textarea
 const copied = ref(false)
+const showMenu = ref(false)
 
 const currentUser = computed(() => chatStore.currentUser)
 const currentUsers = computed(() => chatStore.currentUsers)
