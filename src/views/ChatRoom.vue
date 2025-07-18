@@ -90,6 +90,7 @@
                   rows="1"
                   maxlength="1000"
                   :disabled="isSending"
+                  ref="textareaRef"
               ></textarea>
               <div class="flex justify-between text-xs text-gray-400 mt-1">
                 <span v-if="newMessage.length > 900" class="text-yellow-400">
@@ -175,6 +176,7 @@ const chatStore = useChatSupabaseStore()
 const newMessage = ref('')
 const isSending = ref(false)
 const messagesContainer = ref<HTMLElement>()
+const textareaRef = ref<HTMLTextAreaElement>() // добавляем ref для textarea
 const copied = ref(false)
 
 const currentUser = computed(() => chatStore.currentUser)
@@ -198,6 +200,7 @@ onMounted(async () => {
   }
 
   scrollToBottom()
+  await nextTick(() => textareaRef.value?.focus())
 })
 
 onBeforeUnmount(() => {
@@ -232,6 +235,7 @@ async function sendMessage() {
 
     await chatStore.sendMessage(newMessage.value)
     newMessage.value = ''
+    nextTick(() => textareaRef.value?.focus()) // автофокус после отправки
   } finally {
     isSending.value = false
   }
